@@ -51,10 +51,15 @@ cd check-white
 cp .env.example .env
 nano .env  # 或使用 vi/vim 编辑
 
-# 4. 启动服务
+# 4. 设置数据目录权限（重要！）
+# pptruser 的 UID/GID 通常是 1000
+mkdir -p data
+sudo chown -R 1000:1000 data
+
+# 5. 启动服务
 docker-compose up -d
 
-# 5. 检查服务状态
+# 6. 检查服务状态
 docker-compose ps
 ```
 

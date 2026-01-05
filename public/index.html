@@ -26,6 +26,7 @@
           </select>
         </label>
         <button id="startBtn" class="btn btn-primary">开始检测</button>
+        <button id="stopBtn" class="btn btn-warning" style="display:none;">停止检测</button>
         <button id="clearBtn" class="btn btn-danger">清除历史</button>
       </div>
     </header>
@@ -52,6 +53,7 @@
 
   <script>
     const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const clearBtn = document.getElementById('clearBtn');
     const statusBox = document.getElementById('statusBox');
     const statusText = document.getElementById('statusText');
@@ -106,6 +108,8 @@
     async function startCheck() {
       const concurrency = parseInt(document.getElementById('concurrencySelect').value);
       startBtn.disabled = true;
+      startBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
       startBtn.textContent = '检测中...';
       statusBox.classList.remove('hidden');
       
@@ -115,6 +119,15 @@
         body: JSON.stringify({ concurrency })
       });
       pollStatus();
+    }
+
+    // 停止检测
+    async function stopCheck() {
+      stopBtn.disabled = true;
+      const res = await fetch('/api/stop', { method: 'POST' });
+      if (res.ok) {
+        statusText.textContent = '正在停止...';
+      }
     }
 
     // 轮询状态
@@ -136,6 +149,9 @@
         if (!status.isRunning) {
           clearInterval(pollInterval);
           startBtn.disabled = false;
+          startBtn.style.display = 'inline-block';
+          stopBtn.style.display = 'none';
+          stopBtn.disabled = false;
           startBtn.textContent = '开始检测';
           statusBox.classList.add('hidden');
           loadResults();
@@ -164,6 +180,7 @@
 
     // 初始化
     startBtn.addEventListener('click', startCheck);
+    stopBtn.addEventListener('click', stopCheck);
     clearBtn.addEventListener('click', clearHistory);
     loadResults();
 
@@ -171,6 +188,8 @@
     fetch('/api/status').then(r => r.json()).then(status => {
       if (status.isRunning) {
         startBtn.disabled = true;
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
         startBtn.textContent = '检测中...';
         statusBox.classList.remove('hidden');
         pollStatus();

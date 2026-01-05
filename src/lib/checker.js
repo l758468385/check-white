@@ -42,7 +42,7 @@ async function checkSingleUrl(page, url, config = {}) {
  * 批量检测 URL 列表（并行）
  */
 async function checkUrls(urls, options = {}) {
-  const { concurrency = 5, onProgress } = options;
+  const { concurrency = 5, onProgress, shouldStopRef } = options;
 
   if (!urls || urls.length === 0) {
     return [];
@@ -65,6 +65,11 @@ async function checkUrls(urls, options = {}) {
 
   async function processNext(page) {
     while (currentIndex < urls.length) {
+      // 检查是否需要中断
+      if (shouldStopRef && shouldStopRef.value) {
+        break;
+      }
+
       const idx = currentIndex++;
       const url = urls[idx];
 

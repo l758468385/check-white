@@ -12,6 +12,9 @@ const app = express();
 const PORT = process.env.PORT || 33223;
 const DATA_FILE = path.join(__dirname, '../../data/results.json');
 
+// 中断标志
+let shouldStop = false;
+
 // 检测状态
 let checkingStatus = {
   isRunning: false,
@@ -58,6 +61,15 @@ app.get('/api/status', (req, res) => {
   res.json(checkingStatus);
 });
 
+// API: 停止检测
+app.post('/api/stop', (req, res) => {
+  if (!checkingStatus.isRunning) {
+    return res.status(400).json({ error: '没有正在进行的检测' });
+  }
+  shouldStop = true;
+  res.json({ message: '正在停止检测...' });
+});
+
 // API: 触发检测
 app.post('/api/check', async (req, res) => {
   if (checkingStatus.isRunning) {
@@ -72,6 +84,9 @@ app.post('/api/check', async (req, res) => {
 
 // 执行检测
 async function runCheck(concurrency = 5) {
+  // 重置中断标志
+  shouldStop = false;
+  
   checkingStatus = {
     isRunning: true,
     progress: 0,
@@ -95,11 +110,19 @@ async function runCheck(concurrency = 5) {
 
     const results = await checkUrls(urls, {
       concurrency,
+      shouldStopRef: { get value() { return shouldStop; } },
       onProgress: (progress, total, url) => {
         checkingStatus.progress = progress;
         checkingStatus.current = `[${progress}/${total}] ${url.substring(0, 60)}...`;
       }
     });
+
+    // 检查是否被中断
+    if (shouldStop) {
+      checkingStatus.current = '检测已停止';
+      checkingStatus.isRunning = false;
+      return;
+    }
 
     // 保存结果
     const record = {
