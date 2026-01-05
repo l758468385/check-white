@@ -9,10 +9,10 @@
 <body>
   <div class="container">
     <header>
-      <h1>🔍 白屏检测管理面板</h1>
+      <h1>白屏检测控制台</h1>
       <div class="actions">
         <label class="concurrency-label">
-          并发数:
+          并发数
           <select id="concurrencySelect">
             <option value="1">1</option>
             <option value="3">3</option>
@@ -28,13 +28,12 @@
     <!-- 状态区域 -->
     <div id="statusBox" class="status-box hidden">
       <div class="status-header">
-        <span class="status-icon">⏳</span>
         <span id="statusText">准备中...</span>
+        <span id="progressText" class="progress-text">0 / 0</span>
       </div>
       <div class="progress-bar">
         <div id="progressFill" class="progress-fill"></div>
       </div>
-      <div id="progressText" class="progress-text">0 / 0</div>
     </div>
 
     <!-- 结果列表 -->
@@ -73,20 +72,25 @@
       resultsList.innerHTML = results.map(r => `
         <div class="result-card">
           <div class="result-header">
-            <span class="result-time">${new Date(r.timestamp).toLocaleString()}</span>
-            <span class="result-stats">
-              总计: ${r.total} | 
-              <span class="white-count">白屏: ${r.whiteScreenCount}</span>
-            </span>
+            <span class="result-time">${new Date(r.timestamp).toLocaleString(undefined, {
+              year: 'numeric', month: '2-digit', day: '2-digit', 
+              hour: '2-digit', minute: '2-digit'
+            })}</span>
+            <div class="result-stats">
+              <span class="stat-item">总计 <span class="stat-value">${r.total}</span></span>
+              <span class="stat-item">白屏 <span class="stat-value ${r.whiteScreenCount > 0 ? 'danger' : ''}">${r.whiteScreenCount}</span></span>
+            </div>
           </div>
           <div class="result-urls">
             ${r.results.filter(u => u.isWhiteScreen).map(u => `
-              <div class="url-item white-screen">
-                <span class="url-status">⚪</span>
-                <a href="${u.url}" target="_blank">${u.url}</a>
-                ${u.error ? `<span class="error-msg">(${u.error})</span>` : ''}
+              <div class="url-item">
+                <span class="url-label white">白屏</span>
+                <div>
+                  <a href="${u.url}" target="_blank">${u.url}</a>
+                  ${u.error ? `<div class="error-msg">${u.error}</div>` : ''}
+                </div>
               </div>
-            `).join('') || '<p class="no-white">无白屏页面 ✅</p>'}
+            `).join('') || '<div class="no-white"><svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 检测通过，无白屏页面</div>'}
           </div>
         </div>
       `).join('');
