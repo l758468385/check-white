@@ -12,4 +12,3 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
