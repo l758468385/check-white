@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  check-white-screen:
+    build: .
+    container_name: check-white-screen
+    ports:
+      - "33223:33223"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
