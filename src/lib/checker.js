@@ -6,7 +6,7 @@ const puppeteer = require('puppeteer');
 
 const DEFAULT_CONFIG = {
   timeout: 30000,
-  waitAfterLoad: 2000,
+  waitAfterLoad: 5000,  // 增加到5秒，给页面更多渲染时间
 };
 
 /**
