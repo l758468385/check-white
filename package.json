@@ -4,11 +4,13 @@
   "description": "批量检测网页白屏的自动化工具",
   "main": "index.js",
   "scripts": {
+    "server": "node server.js",
     "check:sentry": "node sentry-check.js",
     "check:file": "node index.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "puppeteer": "^24.0.0"
   }
 }

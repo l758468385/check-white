@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>白屏检测管理面板</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔍 白屏检测管理面板</h1>
+      <div class="actions">
+        <button id="startBtn" class="btn btn-primary">开始检测</button>
+      </div>
+    </header>
+
+    <!-- 状态区域 -->
+    <div id="statusBox" class="status-box hidden">
+      <div class="status-header">
+        <span class="status-icon">⏳</span>
+        <span id="statusText">准备中...</span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div id="progressText" class="progress-text">0 / 0</div>
+    </div>
+
+    <!-- 结果列表 -->
+    <div class="results-section">
+      <h2>检测历史</h2>
+      <div id="resultsList" class="results-list">
+        <p class="empty-text">暂无检测记录</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusText = document.getElementById('statusText');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const resultsList = document.getElementById('resultsList');
+
+    let pollInterval = null;
+
+    // 加载结果
+    async function loadResults() {
+      const res = await fetch('/api/results');
+      const results = await res.json();
+      renderResults(results);
+    }
+
+    // 渲染结果
+    function renderResults(results) {
+      if (results.length === 0) {
+        resultsList.innerHTML = '<p class="empty-text">暂无检测记录</p>';
+        return;
+      }
+
+      resultsList.innerHTML = results.map(r => `
+        <div class="result-card">
+          <div class="result-header">
+            <span class="result-time">${new Date(r.timestamp).toLocaleString()}</span>
+            <span class="result-stats">
+              总计: ${r.total} | 
+              <span class="white-count">白屏: ${r.whiteScreenCount}</span>
+            </span>
+          </div>
+          <div class="result-urls">
+            ${r.results.filter(u => u.isWhiteScreen).map(u => `
+              <div class="url-item white-screen">
+                <span class="url-status">⚪</span>
+                <a href="${u.url}" target="_blank">${u.url}</a>
+                ${u.error ? `<span class="error-msg">(${u.error})</span>` : ''}
+              </div>
+            `).join('') || '<p class="no-white">无白屏页面 ✅</p>'}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 开始检测
+    async function startCheck() {
+      startBtn.disabled = true;
+      startBtn.textContent = '检测中...';
+      statusBox.classList.remove('hidden');
+      
+      await fetch('/api/check', { method: 'POST' });
+      pollStatus();
+    }
+
+    // 轮询状态
+    function pollStatus() {
+      if (pollInterval) clearInterval(pollInterval);
+      
+      pollInterval = setInterval(async () => {
+        const res = await fetch('/api/status');
+        const status = await res.json();
+        
+        statusText.textContent = status.current || '准备中...';
+        
+        if (status.total > 0) {
+          const percent = (status.progress / status.total * 100).toFixed(0);
+          progressFill.style.width = `${percent}%`;
+          progressText.textContent = `${status.progress} / ${status.total}`;
+        }
+        
+        if (!status.isRunning) {
+          clearInterval(pollInterval);
+          startBtn.disabled = false;
+          startBtn.textContent = '开始检测';
+          statusBox.classList.add('hidden');
+          loadResults();
+        }
+      }, 1000);
+    }
+
+    // 初始化
+    startBtn.addEventListener('click', startCheck);
+    loadResults();
+
+    // 检查是否有正在进行的检测
+    fetch('/api/status').then(r => r.json()).then(status => {
+      if (status.isRunning) {
+        startBtn.disabled = true;
+        startBtn.textContent = '检测中...';
+        statusBox.classList.remove('hidden');
+        pollStatus();
+      }
+    });
+  </script>
+</body>
+</html>
