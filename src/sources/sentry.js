@@ -1,8 +1,7 @@
 /**
  * Sentry 数据源模块
- * 从 Sentry 获取白屏错误的 URL 列表
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 const SENTRY_CONFIG = {
   token: process.env.SENTRY_TOKEN,
@@ -13,11 +12,10 @@ const SENTRY_CONFIG = {
 
 /**
  * 从 Sentry 获取白屏错误的 URL 列表
- * @returns {Promise<string[]>} URL 数组
  */
 async function fetchUrls() {
   if (!SENTRY_CONFIG.token) {
-    throw new Error('缺少 SENTRY_TOKEN 环境变量，请检查 .env 文件');
+    throw new Error('缺少 SENTRY_TOKEN 环境变量');
   }
 
   console.log('正在从 Sentry 获取白屏错误...\n');
@@ -30,7 +28,7 @@ async function fetchUrls() {
 
   if (!issuesRes.ok) {
     const errorText = await issuesRes.text();
-    console.error('API 错误详情:', errorText);
+    console.error('API 错误:', errorText);
     throw new Error(`获取 issues 失败: ${issuesRes.status}`);
   }
 
@@ -49,8 +47,7 @@ async function fetchUrls() {
       const events = await eventsRes.json();
       for (const event of events) {
         const url = event.request?.url || 
-                    event.tags?.find(t => t.key === 'url')?.value ||
-                    event.context?.url;
+                    event.tags?.find(t => t.key === 'url')?.value;
         if (url) urls.add(url);
       }
     }

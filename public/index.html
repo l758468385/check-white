@@ -11,6 +11,16 @@
     <header>
       <h1>🔍 白屏检测管理面板</h1>
       <div class="actions">
+        <label class="concurrency-label">
+          并发数:
+          <select id="concurrencySelect">
+            <option value="1">1</option>
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+          </select>
+        </label>
         <button id="startBtn" class="btn btn-primary">开始检测</button>
       </div>
     </header>
@@ -84,11 +94,16 @@
 
     // 开始检测
     async function startCheck() {
+      const concurrency = parseInt(document.getElementById('concurrencySelect').value);
       startBtn.disabled = true;
       startBtn.textContent = '检测中...';
       statusBox.classList.remove('hidden');
       
-      await fetch('/api/check', { method: 'POST' });
+      await fetch('/api/check', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concurrency })
+      });
       pollStatus();
     }
 

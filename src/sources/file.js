@@ -1,14 +1,11 @@
 /**
  * 本地文件数据源模块
- * 从 urls.txt 读取 URL 列表
  */
 const fs = require('fs');
 const path = require('path');
 
 /**
  * 从本地文件读取 URL 列表
- * @param {string} filePath - 文件路径，默认 urls.txt
- * @returns {string[]} URL 数组
  */
 function fetchUrls(filePath = './urls.txt') {
   const absolutePath = path.resolve(filePath);

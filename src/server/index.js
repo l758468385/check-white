@@ -1,16 +1,16 @@
 /**
  * Web服务器 - 白屏检测管理面板
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { fetchUrls } = require('./sentry-source');
-const { checkUrls } = require('./checker');
+const { fetchUrls } = require('../sources/sentry');
+const { checkUrls } = require('../lib/checker');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data', 'results.json');
+const DATA_FILE = path.join(__dirname, '../../data/results.json');
 
 // 检测状态
 let checkingStatus = {
@@ -19,11 +19,12 @@ let checkingStatus = {
   total: 0,
   current: '',
   startTime: null,
+  concurrency: 5,
 };
 
 // 中间件
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../../public')));
 
 // 读取结果
 function readResults() {
@@ -57,24 +58,24 @@ app.post('/api/check', async (req, res) => {
     return res.status(400).json({ error: '检测正在进行中' });
   }
 
-  res.json({ message: '检测已启动' });
+  const concurrency = Math.min(Math.max(req.body.concurrency || 5, 1), 10);
+  res.json({ message: '检测已启动', concurrency });
 
-  // 异步执行检测
-  runCheck();
+  runCheck(concurrency);
 });
 
 // 执行检测
-async function runCheck() {
+async function runCheck(concurrency = 5) {
   checkingStatus = {
     isRunning: true,
     progress: 0,
     total: 0,
     current: '正在获取URL...',
     startTime: new Date().toISOString(),
+    concurrency,
   };
 
   try {
-    // 获取URL
     const urls = await fetchUrls();
     checkingStatus.total = urls.length;
 
@@ -84,45 +85,15 @@ async function runCheck() {
       return;
     }
 
-    // 逐个检测
-    const results = [];
-    const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch({ headless: 'new' });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
+    checkingStatus.current = `并行检测中 (${concurrency} 个并发)`;
 
-    for (let i = 0; i < urls.length; i++) {
-      checkingStatus.progress = i + 1;
-      checkingStatus.current = urls[i];
-
-      try {
-        await page.goto(urls[i], { waitUntil: 'networkidle2', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 3000));
-
-        const result = await page.evaluate(() => {
-          const divs = document.body.querySelectorAll('div');
-          let visible = 0;
-          for (let d of divs) if (d.clientHeight > 0) visible++;
-          return { divCount: divs.length, visibleCount: visible };
-        });
-
-        results.push({
-          url: urls[i],
-          isWhiteScreen: result.visibleCount === 0,
-          divCount: result.divCount,
-          visibleCount: result.visibleCount,
-          error: null,
-        });
-      } catch (e) {
-        results.push({
-          url: urls[i],
-          isWhiteScreen: true,
-          error: e.message,
-        });
+    const results = await checkUrls(urls, {
+      concurrency,
+      onProgress: (progress, total, url) => {
+        checkingStatus.progress = progress;
+        checkingStatus.current = `[${progress}/${total}] ${url.substring(0, 60)}...`;
       }
-    }
-
-    await browser.close();
+    });
 
     // 保存结果
     const record = {
@@ -130,12 +101,13 @@ async function runCheck() {
       timestamp: new Date().toISOString(),
       total: results.length,
       whiteScreenCount: results.filter(r => r.isWhiteScreen).length,
+      concurrency,
       results,
     };
 
     const allResults = readResults();
     allResults.unshift(record);
-    saveResults(allResults.slice(0, 50)); // 只保留最近50条
+    saveResults(allResults.slice(0, 50));
 
   } catch (e) {
     console.error('检测出错:', e);

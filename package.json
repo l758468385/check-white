@@ -2,15 +2,15 @@
   "name": "check-white-screen",
   "version": "1.0.0",
   "description": "批量检测网页白屏的自动化工具",
-  "main": "index.js",
+  "main": "src/server/index.js",
   "scripts": {
-    "server": "node server.js",
-    "check:sentry": "node sentry-check.js",
-    "check:file": "node index.js"
+    "server": "node src/server/index.js",
+    "check:sentry": "node scripts/check-sentry.js",
+    "check:file": "node scripts/check-file.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
+    "express": "^4.18.2",
     "puppeteer": "^24.0.0"
   }
 }

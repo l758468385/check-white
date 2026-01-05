@@ -6,7 +6,7 @@ const puppeteer = require('puppeteer');
 
 const DEFAULT_CONFIG = {
   timeout: 30000,
-  waitAfterLoad: 3000,
+  waitAfterLoad: 2000,
 };
 
 /**
@@ -26,12 +26,12 @@ async function checkSingleUrl(page, url, config = {}) {
       return { divCount: divs.length, visibleCount: visible };
     });
 
-    return { 
-      url, 
-      isWhiteScreen: result.visibleCount === 0, 
+    return {
+      url,
+      isWhiteScreen: result.visibleCount === 0,
       divCount: result.divCount,
       visibleCount: result.visibleCount,
-      error: null 
+      error: null,
     };
   } catch (e) {
     return { url, isWhiteScreen: true, divCount: 0, visibleCount: 0, error: e.message };
@@ -39,39 +39,47 @@ async function checkSingleUrl(page, url, config = {}) {
 }
 
 /**
- * 批量检测 URL 列表
- * @param {string[]} urls - URL 数组
- * @param {object} config - 配置项
- * @returns {Promise<object[]>} - 检测结果数组
+ * 批量检测 URL 列表（并行）
  */
-async function checkUrls(urls, config = {}) {
+async function checkUrls(urls, options = {}) {
+  const { concurrency = 5, onProgress } = options;
+
   if (!urls || urls.length === 0) {
-    console.log('没有 URL 需要检测');
     return [];
   }
 
-  console.log(`\n共 ${urls.length} 个 URL 待检测:\n`);
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
 
-  const browser = await puppeteer.launch({ headless: 'new' });
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1920, height: 1080 });
-
-  const results = [];
-  
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    console.log(`[${i + 1}/${urls.length}] 检测: ${url}`);
-    
-    const result = await checkSingleUrl(page, url, config);
-    results.push(result);
-    
-    const status = result.error 
-      ? `❌ 错误: ${result.error}` 
-      : (result.isWhiteScreen ? '⚪ 白屏' : '✅ 正常');
-    console.log(`         ${status}\n`);
+  const pages = [];
+  for (let i = 0; i < concurrency; i++) {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080 });
+    pages.push(page);
   }
 
+  const results = [];
+  let currentIndex = 0;
+
+  async function processNext(page) {
+    while (currentIndex < urls.length) {
+      const idx = currentIndex++;
+      const url = urls[idx];
+
+      const result = await checkSingleUrl(page, url);
+      results.push(result);
+
+      if (onProgress) {
+        onProgress(results.length, urls.length, url);
+      }
+    }
+  }
+
+  await Promise.all(pages.map(page => processNext(page)));
   await browser.close();
+
   return results;
 }
 
@@ -80,11 +88,11 @@ async function checkUrls(urls, config = {}) {
  */
 function printSummary(results) {
   console.log('\n========== 检测结果 ==========\n');
-  
+
   const whiteScreens = results.filter(r => r.isWhiteScreen);
   const errors = results.filter(r => r.error);
   const normal = results.filter(r => !r.isWhiteScreen && !r.error);
-  
+
   console.log(`总计: ${results.length} | 正常: ${normal.length} | 白屏: ${whiteScreens.length} | 错误: ${errors.length}\n`);
 
   if (whiteScreens.length > 0) {
