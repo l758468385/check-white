@@ -117,6 +117,17 @@ select:focus {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  background-color: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-color);
+  color: white;
+}
+
 /* Status Box */
 .status-box {
   background-color: var(--card-bg);

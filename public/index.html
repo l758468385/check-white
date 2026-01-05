@@ -22,6 +22,7 @@
           </select>
         </label>
         <button id="startBtn" class="btn btn-primary">开始检测</button>
+        <button id="clearBtn" class="btn btn-danger">清除历史</button>
       </div>
     </header>
 
@@ -47,6 +48,7 @@
 
   <script>
     const startBtn = document.getElementById('startBtn');
+    const clearBtn = document.getElementById('clearBtn');
     const statusBox = document.getElementById('statusBox');
     const statusText = document.getElementById('statusText');
     const progressFill = document.getElementById('progressFill');
@@ -137,8 +139,28 @@
       }, 1000);
     }
 
+    // 清除历史
+    async function clearHistory() {
+      if (!confirm('确定要清除所有检测历史吗？此操作不可恢复。')) {
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/results', { method: 'DELETE' });
+        if (res.ok) {
+          loadResults();
+          alert('历史记录已清除');
+        } else {
+          alert('清除失败');
+        }
+      } catch (e) {
+        alert('清除失败: ' + e.message);
+      }
+    }
+
     // 初始化
     startBtn.addEventListener('click', startCheck);
+    clearBtn.addEventListener('click', clearHistory);
     loadResults();
 
     // 检查是否有正在进行的检测

@@ -47,6 +47,12 @@ app.get('/api/results', (req, res) => {
   res.json(results);
 });
 
+// API: 清空结果列表
+app.delete('/api/results', (req, res) => {
+  saveResults([]);
+  res.json({ message: '历史记录已清空' });
+});
+
 // API: 获取检测状态
 app.get('/api/status', (req, res) => {
   res.json(checkingStatus);
