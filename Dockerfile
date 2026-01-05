@@ -16,6 +16,10 @@ RUN npm install --omit=dev
 # 复制源代码
 COPY . .
 
+# 复制启动脚本并设置权限
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # 创建数据目录并设置权限
 RUN mkdir -p /app/data && \
     chown -R pptruser:pptruser /app
@@ -26,5 +30,5 @@ USER pptruser
 # 暴露端口
 EXPOSE 33223
 
-# 启动应用
-CMD ["npm", "run", "server"]
+# 使用启动脚本
+ENTRYPOINT ["docker-entrypoint.sh"]
