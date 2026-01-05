@@ -64,7 +64,7 @@ app.post('/api/check', async (req, res) => {
     return res.status(400).json({ error: '检测正在进行中' });
   }
 
-  const concurrency = Math.min(Math.max(req.body.concurrency || 5, 1), 10);
+  const concurrency = Math.min(Math.max(req.body.concurrency || 5, 1), 50);
   res.json({ message: '检测已启动', concurrency });
 
   runCheck(concurrency);
