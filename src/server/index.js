@@ -9,7 +9,7 @@ const { fetchUrls } = require('../sources/sentry');
 const { checkUrls } = require('../lib/checker');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 33223;
 const DATA_FILE = path.join(__dirname, '../../data/results.json');
 
 // 检测状态
