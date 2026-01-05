@@ -5,7 +5,7 @@
 const puppeteer = require('puppeteer');
 
 const DEFAULT_CONFIG = {
-  timeout: 30000,
+  timeout: 60000,  // 增加到60秒，减少并发时的超时
   waitAfterLoad: 5000,  // 增加到5秒，给页面更多渲染时间
 };
 
@@ -16,7 +16,8 @@ async function checkSingleUrl(page, url, config = {}) {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: cfg.timeout });
+    // 使用 domcontentloaded 更快，配合5秒缓冲足够渲染
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: cfg.timeout });
     await new Promise(r => setTimeout(r, cfg.waitAfterLoad));
     
     const result = await page.evaluate(() => {
