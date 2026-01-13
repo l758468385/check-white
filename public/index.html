@@ -31,6 +31,33 @@
       </div>
     </header>
 
+    <!-- 定时任务控制 -->
+    <div class="cron-panel">
+      <div class="cron-header">
+        <span class="cron-title">⏰ 定时检测</span>
+        <span id="cronStatus" class="cron-status">未启用</span>
+      </div>
+      <div class="cron-controls">
+        <label class="interval-label">
+          间隔
+          <select id="cronInterval">
+            <option value="1">1 分钟</option>
+            <option value="5">5 分钟</option>
+            <option value="10">10 分钟</option>
+            <option value="30">30 分钟</option>
+            <option value="60" selected>1 小时</option>
+            <option value="120">2 小时</option>
+            <option value="360">6 小时</option>
+            <option value="720">12 小时</option>
+            <option value="1440">24 小时</option>
+          </select>
+        </label>
+        <button id="cronStartBtn" class="btn btn-success">启动定时</button>
+        <button id="cronStopBtn" class="btn btn-secondary" style="display:none;">停止定时</button>
+      </div>
+      <div id="cronInfo" class="cron-info"></div>
+    </div>
+
     <!-- 状态区域 -->
     <div id="statusBox" class="status-box hidden">
       <div class="status-header">
@@ -183,6 +210,64 @@
     stopBtn.addEventListener('click', stopCheck);
     clearBtn.addEventListener('click', clearHistory);
     loadResults();
+
+    // 定时任务控制
+    const cronStartBtn = document.getElementById('cronStartBtn');
+    const cronStopBtn = document.getElementById('cronStopBtn');
+    const cronInterval = document.getElementById('cronInterval');
+    const cronStatus = document.getElementById('cronStatus');
+    const cronInfo = document.getElementById('cronInfo');
+
+    // 加载定时任务状态
+    async function loadCronStatus() {
+      const res = await fetch('/api/cron');
+      const status = await res.json();
+      updateCronUI(status);
+    }
+
+    // 更新定时任务 UI
+    function updateCronUI(status) {
+      if (status.enabled) {
+        cronStatus.textContent = '运行中';
+        cronStatus.className = 'cron-status enabled';
+        cronStartBtn.style.display = 'none';
+        cronStopBtn.style.display = 'inline-block';
+        cronInterval.disabled = true;
+        cronInterval.value = status.interval;
+        cronInfo.innerHTML = `
+          <span>每 ${status.interval} 分钟检测一次</span>
+          ${status.lastRun ? `<span>上次: ${new Date(status.lastRun).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
+        `;
+      } else {
+        cronStatus.textContent = '未启用';
+        cronStatus.className = 'cron-status';
+        cronStartBtn.style.display = 'inline-block';
+        cronStopBtn.style.display = 'none';
+        cronInterval.disabled = false;
+        cronInfo.innerHTML = '';
+      }
+    }
+
+    // 启动定时任务
+    cronStartBtn.addEventListener('click', async () => {
+      const interval = parseInt(cronInterval.value);
+      const res = await fetch('/api/cron/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval })
+      });
+      const data = await res.json();
+      updateCronUI(data);
+    });
+
+    // 停止定时任务
+    cronStopBtn.addEventListener('click', async () => {
+      const res = await fetch('/api/cron/stop', { method: 'POST' });
+      const data = await res.json();
+      updateCronUI(data);
+    });
+
+    loadCronStatus();
 
     // 检查是否有正在进行的检测
     fetch('/api/status').then(r => r.json()).then(status => {

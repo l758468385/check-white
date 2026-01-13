@@ -8,6 +8,7 @@ const fs = require('fs');
 const { fetchUrls } = require('../sources/sentry');
 const { checkUrls } = require('../lib/checker');
 const { sendWhiteScreenReport } = require('../utils/mailer');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 33223;
@@ -15,6 +16,15 @@ const DATA_FILE = path.join(__dirname, '../../data/results.json');
 
 // 中断标志
 let shouldStop = false;
+
+// 定时任务相关
+let cronJob = null;
+let cronStatus = {
+  enabled: false,
+  interval: 60, // 默认60分钟
+  nextRun: null,
+  lastRun: null
+};
 
 // 检测状态
 let checkingStatus = {
@@ -69,6 +79,55 @@ app.post('/api/stop', (req, res) => {
   }
   shouldStop = true;
   res.json({ message: '正在停止检测...' });
+});
+
+// API: 获取定时任务状态
+app.get('/api/cron', (req, res) => {
+  res.json(cronStatus);
+});
+
+// API: 启动定时任务
+app.post('/api/cron/start', (req, res) => {
+  const interval = Math.min(Math.max(req.body.interval || 60, 1), 1440); // 1分钟到24小时
+  
+  // 停止已有的定时任务
+  if (cronJob) {
+    cronJob.stop();
+  }
+  
+  // 创建新的定时任务
+  const cronExpression = `*/${interval} * * * *`; // 每 N 分钟
+  cronJob = cron.schedule(cronExpression, () => {
+    console.log(`[${new Date().toLocaleString('zh-CN')}] 定时任务触发，开始检测...`);
+    cronStatus.lastRun = new Date().toISOString();
+    if (!checkingStatus.isRunning) {
+      runCheck(5);
+    } else {
+      console.log('检测正在进行中，跳过本次定时任务');
+    }
+  });
+  
+  cronStatus = {
+    enabled: true,
+    interval,
+    nextRun: new Date(Date.now() + interval * 60 * 1000).toISOString(),
+    lastRun: cronStatus.lastRun
+  };
+  
+  console.log(`定时任务已启动: 每 ${interval} 分钟执行一次`);
+  res.json({ message: `定时任务已启动，每 ${interval} 分钟检测一次`, ...cronStatus });
+});
+
+// API: 停止定时任务
+app.post('/api/cron/stop', (req, res) => {
+  if (cronJob) {
+    cronJob.stop();
+    cronJob = null;
+  }
+  cronStatus.enabled = false;
+  cronStatus.nextRun = null;
+  console.log('定时任务已停止');
+  res.json({ message: '定时任务已停止', ...cronStatus });
 });
 
 // API: 触发检测
