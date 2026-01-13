@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { fetchUrls } = require('../sources/sentry');
 const { checkUrls } = require('../lib/checker');
+const { sendWhiteScreenReport } = require('../utils/mailer');
 
 const app = express();
 const PORT = process.env.PORT || 33223;
@@ -137,6 +138,16 @@ async function runCheck(concurrency = 5) {
     const allResults = readResults();
     allResults.unshift(record);
     saveResults(allResults.slice(0, 50));
+
+    // 发送邮件通知（如果配置了收件人）
+    if (process.env.MAIL_TO) {
+      checkingStatus.current = '正在发送邮件通知...';
+      await sendWhiteScreenReport({
+        to: process.env.MAIL_TO,
+        record
+      });
+      console.log('检测报告邮件已发送');
+    }
 
   } catch (e) {
     console.error('检测出错:', e);
