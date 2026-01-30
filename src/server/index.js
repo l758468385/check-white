@@ -142,6 +142,24 @@ app.post('/api/check', async (req, res) => {
   runCheck(concurrency);
 });
 
+// API: 手动URL测试
+app.post('/api/check/manual', async (req, res) => {
+  if (checkingStatus.isRunning) {
+    return res.status(400).json({ error: '检测正在进行中' });
+  }
+
+  const { urls, concurrency: reqConcurrency } = req.body;
+  
+  if (!urls || !Array.isArray(urls) || urls.length === 0) {
+    return res.status(400).json({ error: '请提供有效的URL列表' });
+  }
+
+  const concurrency = Math.min(Math.max(reqConcurrency || 5, 1), 50);
+  res.json({ message: '手动测试已启动', urlCount: urls.length, concurrency });
+
+  runManualCheck(urls, concurrency);
+});
+
 // 执行检测
 async function runCheck(concurrency = 5) {
   // 重置中断标志
@@ -210,6 +228,64 @@ async function runCheck(concurrency = 5) {
 
   } catch (e) {
     console.error('检测出错:', e);
+    checkingStatus.current = `错误: ${e.message}`;
+  } finally {
+    checkingStatus.isRunning = false;
+  }
+}
+
+// 执行手动URL检测
+async function runManualCheck(urls, concurrency = 5) {
+  // 重置中断标志
+  shouldStop = false;
+  
+  checkingStatus = {
+    isRunning: true,
+    progress: 0,
+    total: urls.length,
+    current: `手动测试: 准备检测 ${urls.length} 个URL...`,
+    startTime: new Date().toISOString(),
+    concurrency,
+  };
+
+  try {
+    checkingStatus.current = `手动测试: 并行检测中 (${concurrency} 个并发)`;
+
+    const results = await checkUrls(urls, {
+      concurrency,
+      shouldStopRef: { get value() { return shouldStop; } },
+      onProgress: (progress, total, url) => {
+        checkingStatus.progress = progress;
+        checkingStatus.current = `[手动] [${progress}/${total}] ${url.substring(0, 50)}...`;
+      }
+    });
+
+    // 检查是否被中断
+    if (shouldStop) {
+      checkingStatus.current = '手动测试已停止';
+      checkingStatus.isRunning = false;
+      return;
+    }
+
+    // 保存结果
+    const record = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      total: results.length,
+      whiteScreenCount: results.filter(r => r.isWhiteScreen).length,
+      concurrency,
+      source: 'manual', // 标记为手动测试
+      results,
+    };
+
+    const allResults = readResults();
+    allResults.unshift(record);
+    saveResults(allResults.slice(0, 50));
+
+    console.log(`手动测试完成: ${results.length} 个URL, ${record.whiteScreenCount} 个白屏`);
+
+  } catch (e) {
+    console.error('手动测试出错:', e);
     checkingStatus.current = `错误: ${e.message}`;
   } finally {
     checkingStatus.isRunning = false;

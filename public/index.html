@@ -58,6 +58,22 @@
       <div id="cronInfo" class="cron-info"></div>
     </div>
 
+    <!-- 手动URL测试 -->
+    <div class="manual-test-panel">
+      <div class="manual-test-header">
+        <span class="manual-test-title">🔗 手动测试</span>
+        <span class="manual-test-hint">每行输入一个URL</span>
+      </div>
+      <textarea id="manualUrls" class="manual-urls-input" placeholder="https://example.com/page1
+https://example.com/page2
+..."></textarea>
+      <div class="manual-test-actions">
+        <button id="manualTestBtn" class="btn btn-primary">开始测试</button>
+        <button id="manualStopBtn" class="btn btn-warning" style="display:none;">停止测试</button>
+        <span id="manualUrlCount" class="url-count">0 个URL</span>
+      </div>
+    </div>
+
     <!-- 状态区域 -->
     <div id="statusBox" class="status-box hidden">
       <div class="status-header">
@@ -175,11 +191,20 @@
         
         if (!status.isRunning) {
           clearInterval(pollInterval);
+          // 恢复开始检测按钮
           startBtn.disabled = false;
           startBtn.style.display = 'inline-block';
           stopBtn.style.display = 'none';
           stopBtn.disabled = false;
           startBtn.textContent = '开始检测';
+          // 恢复手动测试按钮（如果已初始化）
+          if (typeof manualTestBtn !== 'undefined') {
+            manualTestBtn.disabled = false;
+            manualTestBtn.style.display = 'inline-block';
+            manualStopBtn.style.display = 'none';
+            manualStopBtn.disabled = false;
+            manualUrls.disabled = false;
+          }
           statusBox.classList.add('hidden');
           loadResults();
         }
@@ -268,6 +293,60 @@
     });
 
     loadCronStatus();
+
+    // 手动URL测试
+    const manualUrls = document.getElementById('manualUrls');
+    const manualTestBtn = document.getElementById('manualTestBtn');
+    const manualStopBtn = document.getElementById('manualStopBtn');
+    const manualUrlCount = document.getElementById('manualUrlCount');
+
+    // 解析URL列表
+    function parseUrls(text) {
+      return text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#') && line.startsWith('http'));
+    }
+
+    // 更新URL计数
+    manualUrls.addEventListener('input', () => {
+      const urls = parseUrls(manualUrls.value);
+      manualUrlCount.textContent = `${urls.length} 个URL`;
+    });
+
+    // 开始手动测试
+    async function startManualTest() {
+      const urls = parseUrls(manualUrls.value);
+      if (urls.length === 0) {
+        alert('请输入至少一个有效的URL');
+        return;
+      }
+
+      const concurrency = parseInt(document.getElementById('concurrencySelect').value);
+      manualTestBtn.disabled = true;
+      manualTestBtn.style.display = 'none';
+      manualStopBtn.style.display = 'inline-block';
+      manualUrls.disabled = true;
+      statusBox.classList.remove('hidden');
+
+      await fetch('/api/check/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls, concurrency })
+      });
+      pollStatus();
+    }
+
+    // 停止手动测试
+    async function stopManualTest() {
+      manualStopBtn.disabled = true;
+      const res = await fetch('/api/stop', { method: 'POST' });
+      if (res.ok) {
+        statusText.textContent = '正在停止...';
+      }
+    }
+
+    manualTestBtn.addEventListener('click', startManualTest);
+    manualStopBtn.addEventListener('click', stopManualTest);
 
     // 检查是否有正在进行的检测
     fetch('/api/status').then(r => r.json()).then(status => {
