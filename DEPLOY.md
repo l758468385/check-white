@@ -15,6 +15,10 @@ cp .env.example .env
 ### 2. 构建并启动
 
 ```bash
+
+docker compose down
+
+
 # 构建并启动容器
 docker-compose up -d
 
