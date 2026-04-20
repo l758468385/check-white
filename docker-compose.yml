@@ -5,7 +5,7 @@ services:
     build: .
     container_name: check-white-screen
     ports:
-      - "${HOST_PORT:-33223}:${PORT:-33223}"
+      - "33223:33223"
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro
