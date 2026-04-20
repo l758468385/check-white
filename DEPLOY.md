@@ -60,6 +60,19 @@ chmod +x deploy.sh
 - 已安装 Docker 和 Docker Compose
 - 服务器防火墙已开放 33223 端口
 
+### ARM 机器说明
+
+当前 Dockerfile 已改为基于多架构 `node:20-bookworm-slim` 并安装系统 `chromium`，可直接用于 ARM64 机器。
+
+如果你之前已经失败构建过旧镜像，建议先清理后再重新构建：
+
+```bash
+docker-compose down
+docker rmi check-white-check-white-screen 2>/dev/null || true
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ### 部署步骤
 
 ```bash

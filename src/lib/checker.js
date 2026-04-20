@@ -49,9 +49,15 @@ async function checkUrls(urls, options = {}) {
     return [];
   }
 
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    executablePath: executablePath || undefined,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+    ]
   });
 
   const pages = [];
